@@ -43,17 +43,101 @@ If any stage shows `ERR`, stop and diagnose before continuing.
 
 ## Skill routing
 
+When the user's request matches an available skill, invoke it via the Skill tool. When in doubt, invoke the skill. A false positive is cheaper than a false negative.
+
+### Product / Strategy
 | Intent | Route to |
 |--------|----------|
-| Bugs / errors | `/investigate` |
-| Code navigation (large repo) | `/graphify` first, then continue |
-| Brain sync check | `/sync-gbrain` |
-| PRD execution | Ensure `prd.json` in project root, Ralph loop auto-activates |
-| Strategy / scope | `/plan-ceo-review` |
-| Architecture | `/plan-eng-review` |
-| Code review | `/review` |
-| QA | `/qa` |
-| Ship / deploy | `/ship` |
+| User describes a new idea, brainstorms, pitches a concept, "is this worth building" | `/office-hours` |
+| User asks about strategy, scope, ambition, "think bigger", "what should we build" | `/plan-ceo-review` |
+| User asks to review architecture, lock in the plan, "does this design make sense" | `/plan-eng-review` |
+| User asks about design system, brand, visual identity, "how should this look" | `/design-consultation` |
+| User asks to review design of a plan | `/plan-design-review` |
+| User asks about developer experience of a plan, API/CLI/SDK design | `/plan-devex-review` |
+| User wants all reviews done automatically, "review everything" | `/autoplan` |
+| User wants to tune question sensitivity, "stop asking me that" | `/plan-tune` |
+
+### Engineering / QA
+| Intent | Route to |
+|--------|----------|
+| Bugs / errors, "why is this broken", "this doesn't work", "wtf" | `/investigate` (requires Patch #1423) |
+| User asks to test the site, find bugs, QA, "does this work", "check the deploy" | `/qa` |
+| User asks to just report bugs without fixing | `/qa-only` |
+| User asks to review code, check the diff, pre-landing review | `/review` |
+| User asks about visual polish, design audit of a live site | `/design-review` |
+| User asks to audit the live developer experience, time-to-hello-world | `/devex-review` |
+| User wants pair programming with a subagent | `/pair-agent` |
+| User asks for weekly retro, what did we ship, "how'd we do" | `/retro` |
+| User asks for a second opinion, codex review | `/codex` |
+
+### Design
+| Intent | Route to |
+|--------|----------|
+| Structured design workflow | `/design` |
+| Design consultation before building | `/design-consultation` |
+| Generate or review HTML/UI design | `/design-html` |
+| Review existing design artifacts | `/design-review` |
+| Rapid parallel design exploration | `/design-shotgun` |
+
+### Security
+| Intent | Route to |
+|--------|----------|
+| Security audit, OWASP, vulnerabilities, "is this secure" | `/cso` |
+| User asks for safety mode, careful mode | `/careful` |
+| User asks for a safety guard before risky operations | `/guard` |
+
+### Release
+| Intent | Route to |
+|--------|----------|
+| Ship / deploy / PR, "let's land this", "send it" | `/ship` |
+| Merge + deploy + verify as one flow | `/land-and-deploy` |
+| Configure deployment pipeline | `/setup-deploy` |
+| Monitor prod after shipping, post-deploy checks | `/canary` |
+| Post-deploy landing report | `/landing-report` |
+| Update docs after shipping | `/document-release` |
+
+### Memory / Brain
+| Intent | Route to |
+|--------|----------|
+| Write and reuse project patterns, "what has gstack learned" | `/learn` |
+| Upgrade gstack | `/gstack-upgrade` |
+| Brain sync check | `/sync-gbrain` (requires Patches #1415 and #1357) |
+| Initial gbrain setup | `/setup-gbrain` |
+
+### Context Management
+| Intent | Route to |
+|--------|----------|
+| Save progress, checkpoint, "save my work" | `/context-save` |
+| Resume, restore, "where was I" | `/context-restore` |
+| Restrict edits / lock files | `/freeze` |
+| Unfreeze previously frozen state | `/unfreeze` |
+
+### Browser / Scraping
+| Intent | Route to |
+|--------|----------|
+| Web scraping within a session | `/scrape` |
+| Launch real browser for QA, "open the browser" | `/open-gstack-browser` |
+| Configure browser cookies for authenticated testing | `/setup-browser-cookies` |
+
+### Utilities
+| Intent | Route to |
+|--------|----------|
+| Full system health check | `/health` |
+| Convert workflow or doc into a reusable skill | `/skillify` |
+| Generate a PDF from content | `/make-pdf` |
+| Browser/claw tool integration | `/openclaw` |
+| Page speed, performance regression, benchmarks | `/benchmark` |
+| Code navigation in large repo (>50 files) | `/graphify` first, then continue |
+| PRD execution | Ensure `prd.json` in project root — Ralph loop auto-activates |
+
+---
+
+## GBrain Search Guidance
+
+When gbrain is configured and this worktree is pinned:
+- Prefer `gbrain search` / `gbrain query` over Grep for semantic questions.
+- Use `gbrain code-def` / `code-refs` / `code-callers` for symbol-aware code lookup.
+- Run `/sync-gbrain` to refresh.
 
 ---
 
@@ -63,6 +147,15 @@ If any stage shows `ERR`, stop and diagnose before continuing.
 - Do NOT activate Ralph loop unless `prd.json` exists in the project root.
 - Do NOT load gstack BROWSER.md, CHANGELOG.md, or TODOS.md into context. They are reference docs, not agent instructions.
 - If context is approaching limit, save with `/context-save` before proceeding.
+
+---
+
+## Model tier
+
+| Tier | Use for |
+|------|--------|
+| **Opus** | `/cso`, `/plan-ceo-review`, `/plan-eng-review`, `/review` on complex tasks |
+| **Sonnet** (default) | Everything else |
 
 ---
 
