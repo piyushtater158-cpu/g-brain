@@ -1,0 +1,44 @@
+--- a/bin/gstack-gbrain-sync.ts
++++ b/bin/gstack-gbrain-sync.ts
+@@ -160,18 +160,32 @@ function originUrl(): string | null {
+ function deriveCodeSourceId(repoPath: string): string {
+-  const pathHash = createHash("sha1").update(repoPath).digest("hex").slice(0, 8);
+   const remote = canonicalizeRemote(originUrl());
+-  if (remote) {
+-    const segs = remote.split("/").filter(Boolean);
+-    const slugSource = segs.slice(-2).join("-");
+-    return constrainSourceId("gstack-code", `${slugSource}-${pathHash}`);
+-  }
+-  const base = repoPath.split("/").pop() || "repo";
+-  return constrainSourceId("gstack-code", `${base}-${pathHash}`);
++
++  // FIX #1357 (part 1): canonicalizeRemote returns `github.com/org/repo`.
++  // Dots in `github.com` survive into the slug and fail gbrain's alnum+hyphen
++  // validator. The fallback branch correctly used [^a-z0-9-]+ but the remote
++  // branch did not. Now both branches use the same sanitizer.
++  const raw = remote
++    ? remote
++        .toLowerCase()
++        .replace(/[^a-z0-9-]+/g, "-")
++        .replace(/-+/g, "-")
++        .replace(/^-|-$/g, "")
++    : (repoPath.split("/").pop() || "repo")
++        .toLowerCase()
++        .replace(/[^a-z0-9-]+/g, "-")
++        .replace(/-+/g, "-")
++        .replace(/^-|-$/g, "");
++
++  const PREFIX = "gstack-code-";
++  const MAX = 32 - PREFIX.length; // 20 chars available after prefix
++
++  // FIX #1357 (part 2): enforce gbrain's 32-char limit.
++  // Truncate + 6-char hash suffix to keep IDs unique across orgs sharing a basename.
++  if (raw.length <= MAX) return PREFIX + raw;
++
++  const hash = createHash("sha1")
++    .update(remote || repoPath)
++    .digest("hex")
++    .slice(0, 6);
++  const head = raw.slice(0, MAX - 1 - hash.length).replace(/-$/, "");
++  return PREFIX + head + "-" + hash;
+ }

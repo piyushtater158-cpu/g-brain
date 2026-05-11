@@ -1,0 +1,14 @@
+--- a/bin/gstack-learnings-log
++++ b/bin/gstack-learnings-log
+@@ -20,7 +20,8 @@ INPUT="$1"
+ VALIDATED=$(printf '%s' "$INPUT" | bun -e "
+ const raw = await Bun.stdin.text();
+ let j;
+ try { j = JSON.parse(raw); } catch { process.stderr.write('gstack-learnings-log: invalid JSON, skipping\n'); process.exit(1); }
+ 
+ // Field validation: type must be from allowed list
+-const ALLOWED_TYPES = ['pattern', 'pitfall', 'preference', 'architecture', 'tool', 'operational'];
++// FIX #1423: /investigate skill logs type:"investigation" but this list never
++// included it — every /investigate run silently dropped its entire learning history.
++const ALLOWED_TYPES = ['pattern', 'pitfall', 'preference', 'architecture', 'tool', 'operational', 'investigation'];
+ if (!j.type || !ALLOWED_TYPES.includes(j.type)) {

@@ -1,0 +1,58 @@
+--- a/lib/gstack-memory-helpers.ts
++++ b/lib/gstack-memory-helpers.ts
+@@ -199,12 +199,38 @@ function gstackHome(): string {
+ function freshDetectEngineTier(): EngineDetect {
+   const now = Date.now();
+-  try {
+-    const out = execSync("gbrain doctor --json --fast 2>/dev/null", { encoding: "utf-8", timeout: 5000 });
+-    const parsed = JSON.parse(out);
+-    const engine: EngineTier = parsed?.engine === "supabase" ? "supabase" : parsed?.engine === "pglite" ? "pglite" : "unknown";
+-    return {
+-      engine,
+-      supabase_url: parsed?.supabase_url || undefined,
+-      detected_at: now,
+-      schema_version: 1,
+-    };
+-  } catch {
+-    return { engine: "unknown", detected_at: now, schema_version: 1 };
+-  }
++  let parsed: Record<string, unknown> | null = null;
++
++  // FIX #1415 (part 1): gbrain doctor exits with code 1 when health_score < 100.
++  // execSync throws on non-zero exit — but stdout is still on the error object.
++  // The original code caught the throw and returned engine=unknown, losing the JSON.
++  try {
++    const out = execSync("gbrain doctor --json --fast 2>/dev/null", {
++      encoding: "utf-8",
++      timeout: 5000,
++    });
++    parsed = JSON.parse(out);
++  } catch (err: unknown) {
++    try {
++      const stdout = (err as { stdout?: string })?.stdout ?? "";
++      if (stdout) parsed = JSON.parse(stdout);
++    } catch { /* unparseable stdout — stay null */ }
++  }
++
++  // FIX #1415 (part 2): gbrain >=0.25 uses schema_version:2, which dropped
++  // the top-level `engine` field entirely. Fall back to ~/.gbrain/config.json.
++  let engine: EngineTier =
++    parsed?.engine === "supabase" ? "supabase" :
++    parsed?.engine === "pglite"   ? "pglite"   : "unknown";
++
++  if (engine === "unknown") {
++    try {
++      const configPath = join(homedir(), ".gbrain", "config.json");
++      const cfg = JSON.parse(readFileSync(configPath, "utf-8")) as Record<string, unknown>;
++      if (cfg?.engine === "pglite") engine = "pglite";
++      else if (cfg?.engine === "postgres" || cfg?.database_url) engine = "supabase";
++    } catch { /* config unreadable — stay unknown */ }
++  }
++
++  return {
++    engine,
++    supabase_url: (parsed?.supabase_url as string) || undefined,
++    detected_at: now,
++    schema_version: 1,
++  };
+ }

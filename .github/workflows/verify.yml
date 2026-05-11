@@ -1,0 +1,45 @@
+name: Verify patches
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  verify-patch-diffs:
+    name: Validate patch diff syntax
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check patch files exist
+        run: |
+          for f in patches/patch-1-engine-detect.ts.diff patches/patch-2-source-id.ts.diff patches/patch-3-learnings-log.sh.diff; do
+            if [ ! -f "$f" ]; then
+              echo "ERROR: Missing patch file: $f"
+              exit 1
+            fi
+            echo "OK: $f"
+          done
+
+      - name: Check scripts are executable-ready
+        run: |
+          for f in scripts/patch-gstack.sh scripts/verify-patches.sh scripts/health-check.sh; do
+            if [ ! -f "$f" ]; then
+              echo "ERROR: Missing script: $f"
+              exit 1
+            fi
+            bash -n "$f" && echo "OK: $f syntax valid" || echo "ERROR: $f has syntax errors"
+          done
+
+      - name: Validate patch diffs are non-empty
+        run: |
+          for f in patches/*.diff; do
+            lines=$(wc -l < "$f")
+            if [ "$lines" -lt 5 ]; then
+              echo "ERROR: $f appears empty or trivial ($lines lines)"
+              exit 1
+            fi
+            echo "OK: $f ($lines lines)"
+          done
