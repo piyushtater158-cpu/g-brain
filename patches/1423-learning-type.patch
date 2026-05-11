@@ -1,0 +1,19 @@
+# Patch #1423 — Add 'investigation' to ALLOWED_TYPES in gstack-learnings-log
+# File: ~/.claude/skills/gstack/bin/gstack-learnings-log
+# Issue: https://github.com/garrytan/gstack/issues/1423
+#
+# Root cause:
+# /investigate skill logs type:"investigation" but ALLOWED_TYPES never
+# included it. Every /investigate run silently exits 0 without writing.
+#
+# One-line fix:
+#
+# BEFORE:
+# const ALLOWED_TYPES = ['pattern','pitfall','preference','architecture','tool','operational'];
+#
+# AFTER:
+# const ALLOWED_TYPES = ['pattern','pitfall','preference','architecture','tool','operational','investigation'];
+#
+# Verify:
+# echo '{"skill":"investigate","type":"investigation","key":"test","insight":"patch ok","confidence":8,"source":"observed"}' | \
+#   ~/.claude/skills/gstack/bin/gstack-learnings-log /dev/stdin

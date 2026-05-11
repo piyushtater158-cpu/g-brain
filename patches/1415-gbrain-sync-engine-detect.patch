@@ -1,0 +1,46 @@
+# Patch #1415 — Fix freshDetectEngineTier for gbrain >=0.25 + Supabase
+# File: ~/.claude/skills/gstack/lib/gstack-memory-helpers.ts
+# Issue: https://github.com/garrytan/gstack/issues/1415
+#
+# Root cause:
+# 1. execSync throws on non-zero exit; stdout is on the error object but
+#    the catch block returns {engine: 'unknown'} immediately.
+# 2. gbrain >=0.25 dropped the top-level `engine` field (schema_version:2).
+#
+# Replace freshDetectEngineTier() with:
+
+# function freshDetectEngineTier(): EngineDetect {
+#   const now = Date.now();
+#   let parsed: Record<string, unknown> | null = null;
+#
+#   try {
+#     const out = execSync("gbrain doctor --json --fast 2>/dev/null", {
+#       encoding: "utf-8",
+#       timeout: 5000,
+#     });
+#     parsed = JSON.parse(out);
+#   } catch (err: unknown) {
+#     try {
+#       const stdout = (err as { stdout?: string })?.stdout ?? "";
+#       if (stdout) parsed = JSON.parse(stdout);
+#     } catch { /* unparseable */ }
+#   }
+#
+#   let engine: EngineTier =
+#     parsed?.engine === "supabase" ? "supabase" :
+#     parsed?.engine === "pglite"   ? "pglite"   : "unknown";
+#
+#   if (engine === "unknown") {
+#     try {
+#       const configPath = join(homedir(), ".gbrain", "config.json");
+#       const cfg = JSON.parse(readFileSync(configPath, "utf-8"));
+#       if (cfg?.engine === "pglite") engine = "pglite";
+#       else if (cfg?.engine === "postgres" || cfg?.database_url) engine = "supabase";
+#     } catch { /* config unreadable */ }
+#   }
+#
+#   return { engine, supabase_url: parsed?.supabase_url, detected_at: now, schema_version: 1 };
+# }
+#
+# After patching:
+# rm -f ~/.gstack/.gbrain-engine-cache.json

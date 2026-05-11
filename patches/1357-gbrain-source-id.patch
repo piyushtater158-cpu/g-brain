@@ -1,0 +1,27 @@
+# Patch #1357 — Fix deriveCodeSourceId slug sanitisation + 32-char cap
+# File: ~/.claude/skills/gstack/bin/gstack-gbrain-sync.ts
+# Issue: https://github.com/garrytan/gstack/issues/1357
+#
+# Root cause:
+# canonicalizeRemote returns 'github.com/org/repo' — dots survive into the
+# slug and fail gbrain's alnum+hyphen validator. No 32-char cap enforced.
+#
+# Replace deriveCodeSourceId() with:
+#
+# function deriveCodeSourceId(repoPath: string): string {
+#   const remote = canonicalizeRemote(originUrl());
+#   const raw = remote
+#     ? remote.toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "")
+#     : (repoPath.split("/").pop() || "repo").toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+#
+#   const PREFIX = "gstack-code-";
+#   const MAX = 32 - PREFIX.length; // 20 chars
+#   if (raw.length <= MAX) return PREFIX + raw;
+#
+#   const hash = createHash("sha1").update(remote || repoPath).digest("hex").slice(0, 6);
+#   const head = raw.slice(0, MAX - 1 - hash.length).replace(/-$/, "");
+#   return PREFIX + head + "-" + hash;
+# }
+#
+# After patching:
+# rm -f .gbrain-sync-state.json
